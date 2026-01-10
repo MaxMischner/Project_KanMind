@@ -1,0 +1,18 @@
+from django.urls import path
+from .views import BoardViewSet, DashboardViewSet, BoardDetailViewSet, TaskDetailViewSet, UserProfilDetailViewSet , UserProfilViewSet, TaskViewSet , CommentViewSet, EmailCheckView, TaskCommentListView, TaskCommentDetailView, AssignedTasksView, ReviewerTasksView
+
+urlpatterns = [
+    path('dashboard/', DashboardViewSet.as_view(), name='dashboard-list'),
+    path('boards/', BoardViewSet.as_view(), name='boards-list'),
+    path('boards/<int:pk>/', BoardDetailViewSet.as_view(), name='board-detail'),
+    path('users/',UserProfilViewSet.as_view(), name='userprofil-list'),
+    path('users/<int:pk>/', UserProfilDetailViewSet.as_view(), name='userprofil-detail'),
+    path('tasks/assigned-to-me/', AssignedTasksView.as_view(), name='assigned-tasks'),
+    path('tasks/reviewing/', ReviewerTasksView.as_view(), name='reviewer-tasks'),
+    path('tasks/', TaskViewSet.as_view(), name='task-list'),
+    path('tasks/<int:pk>/', TaskDetailViewSet.as_view(), name='task-detail'),
+    path('tasks/<int:task_id>/comments/', TaskCommentListView.as_view(), name='task-comments'),
+    path('tasks/<int:task_id>/comments/<int:pk>/', TaskCommentDetailView.as_view(), name='task-comment-detail'),
+    path('comments/', CommentViewSet.as_view(), name='comment-list'),
+    path('email-check/', EmailCheckView.as_view(), name='email-check'),
+]
