@@ -1,6 +1,6 @@
 from django.urls import path
 
-from user_auth_app.api.serializers import CostomLoginView
+from auth_app.api.serializers import CostomLoginView
 from .views import RegistrationView, UserProfileList, UserProfileDetail
 
 urlpatterns = [

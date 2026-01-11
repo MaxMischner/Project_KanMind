@@ -6,9 +6,9 @@ custom permissions for board member access control.
 """
 
 from rest_framework.response import Response
-from boards_app.api.permissions import IsOwnerOrAdmin
-from boards_app.api.serilizers import BoardSerializer, CommentSerializer, TaskSerializer, UserSerializer, DashboardSerializer
-from boards_app.models import Board, Comment, Task, Dashboard
+from kanban_app.api.permissions import IsOwnerOrAdmin
+from kanban_app.api.serilizers import BoardSerializer, CommentSerializer, TaskSerializer, UserSerializer, DashboardSerializer
+from kanban_app.models import Board, Comment, Task, Dashboard
 from django.contrib.auth.models import User
 from rest_framework import generics
 

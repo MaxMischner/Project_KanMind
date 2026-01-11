@@ -6,7 +6,7 @@ Includes custom field mapping for frontend compatibility.
 """
 
 from rest_framework import serializers
-from boards_app.models import Board, Dashboard, Task, Comment
+from kanban_app.models import Board, Dashboard, Task, Comment
 from django.contrib.auth.models import User
 
 
