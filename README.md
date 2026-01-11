@@ -6,6 +6,31 @@
 
 ---
 
+## ⚠️ Important: Authentication Token Reset
+
+**If you experience 403 Forbidden errors or authentication issues after database reset:**
+
+The frontend stores authentication tokens in localStorage. After resetting the database, old tokens become invalid. To resolve this:
+
+1. Open your browser's Developer Console (F12)
+2. Navigate to the **Application** tab (Chrome) or **Storage** tab (Firefox)
+3. Select **Local Storage** → `http://127.0.0.1:5500`
+4. Click **Clear All** or delete the following keys:
+   - `auth-token`
+   - `auth-user-id`
+   - `auth-email`
+   - `auth-fullname`
+5. Reload the page and log in again with valid credentials
+
+**Quick Console Command:**
+```javascript
+localStorage.clear();
+```
+
+> **Note:** This manual step is required because the frontend authentication guard was not modified to automatically redirect on 401/403 responses.
+
+---
+
 ## Table of Contents
 
 - [Features](#features)

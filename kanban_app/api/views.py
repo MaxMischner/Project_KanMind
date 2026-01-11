@@ -50,6 +50,18 @@ class BoardViewSet(viewsets.ModelViewSet):
             return Board.objects.filter(users=self.request.user)
         return Board.objects.all()
 
+    def perform_create(self, serializer):
+        """Create a new board and add creator as member.
+
+        Saves the board and automatically adds the requesting user as a member
+        so they can access their own created boards.
+
+        Args:
+            serializer (BoardSerializer): The serializer with validated data.
+        """
+        board = serializer.save()
+        board.users.add(self.request.user)
+
 
 class UserProfilViewSet(viewsets.ModelViewSet):
     """API view for listing and creating user profiles.
@@ -159,7 +171,8 @@ class TaskCommentListView(generics.ListCreateAPIView):
             serializer (CommentSerializer): The serializer with validated data.
         """
         task_id = self.kwargs['task_id']
-        serializer.save(task_id=task_id)
+        task = Task.objects.get(pk=task_id)
+        serializer.save(task=task, author=self.request.user, board=task.board)
 
 
 class TaskCommentDetailView(generics.RetrieveDestroyAPIView):

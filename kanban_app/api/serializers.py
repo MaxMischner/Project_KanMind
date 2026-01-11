@@ -16,9 +16,22 @@ class CommentSerializer(serializers.ModelSerializer):
     Handles serialization of task comments including author and timestamp.
     """
 
+    author = serializers.SerializerMethodField()
+
+    def get_author(self, obj):
+        """Return author's full name string for frontend display.
+
+        Falls back to email or username if full name is empty.
+        """
+        name = f"{obj.author.first_name} {obj.author.last_name}".strip()
+        if not name:
+            name = obj.author.email or obj.author.username
+        return name
+
     class Meta:
         model = Comment
         fields = ['id', 'content', 'task', 'author', 'created_at', 'board']
+        read_only_fields = ['task', 'author', 'created_at', 'board']
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -51,12 +64,23 @@ class TaskSerializer(serializers.ModelSerializer):
 
     Includes nested serialization for assigned users, reviewers, and comments.
     The 'details' field is handled specially to return empty string instead
-    of null for better frontend compatibility.
+    of null for better frontend compatibility. Supports writing assigned and
+    reviewer via separate writable fields while reading expanded user objects.
     """
 
     comments = CommentSerializer(many=True, read_only=True)
-    assigned = UserSerializer(read_only=True)
+    assignee = UserSerializer(read_only=True, source='assigned')
     reviewer = UserSerializer(read_only=True)
+    assignee_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        write_only=True,
+        source='assigned')
+    reviewer_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        write_only=True,
+        source='reviewer')
     details = serializers.SerializerMethodField()
 
     def get_details(self, obj):
@@ -69,6 +93,8 @@ class TaskSerializer(serializers.ModelSerializer):
             str: Task details or empty string if None.
         """
         return obj.details or ""
+    description = serializers.CharField(source='details', required=False, allow_blank=True)
+    comments_count = serializers.SerializerMethodField()
 
     def validate_title(self, value):
         """Ensure task title is non-empty after trimming whitespace.
@@ -87,19 +113,28 @@ class TaskSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Title cannot be empty.')
         return cleaned
 
+    
+
     class Meta:
         model = Task
         fields = [
             'id',
             'title',
             'details',
+            'description',
             'board',
             'due_date',
-            'assigned',
+            'assignee',
+            'assignee_id',
             'reviewer',
+            'reviewer_id',
             'status',
             'priority',
-            'comments']
+            'comments',
+            'comments_count']
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
 
 
 class BoardSerializer(serializers.ModelSerializer):
@@ -122,6 +157,10 @@ class BoardSerializer(serializers.ModelSerializer):
         write_only=True,
         source='users')
     tasks = TaskSerializer(many=True, read_only=True)
+    member_count = serializers.SerializerMethodField()
+    ticket_count = serializers.SerializerMethodField()
+    tasks_to_do_count = serializers.SerializerMethodField()
+    tasks_high_prio_count = serializers.SerializerMethodField()
 
     def validate_title(self, value):
         """Ensure board title is non-empty after trimming whitespace.
@@ -192,9 +231,21 @@ class BoardSerializer(serializers.ModelSerializer):
                 instance.users.add(user)
         return super().partial_update(instance, validated_data)
 
+    def get_member_count(self, obj):
+        return obj.users.count()
+
+    def get_ticket_count(self, obj):
+        return obj.tasks.count()
+
+    def get_tasks_to_do_count(self, obj):
+        return obj.tasks.filter(status='to-do').count()
+
+    def get_tasks_high_prio_count(self, obj):
+        return obj.tasks.filter(priority__iexact='high').count()
+
     class Meta:
         model = Board
-        fields = ['id', 'title', 'description', 'users', 'members', 'members_write', 'tasks']
+        fields = ['id', 'title', 'description', 'users', 'members', 'members_write', 'tasks', 'member_count', 'ticket_count', 'tasks_to_do_count', 'tasks_high_prio_count']
 
 
 class DashboardSerializer(serializers.ModelSerializer):
