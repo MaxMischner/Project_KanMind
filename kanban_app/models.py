@@ -17,7 +17,12 @@ class Dashboard(models.Model):
     """
 
     title = models.CharField(max_length=255)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='dashboards')
+
+    class Meta:
+        verbose_name = 'Dashboard'
+        verbose_name_plural = 'Dashboards'
+        ordering = ['title']
 
 
 class Board(models.Model):
@@ -36,7 +41,12 @@ class Board(models.Model):
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    users = models.ManyToManyField(User, blank=True, null=True)
+    users = models.ManyToManyField(User, blank=True, related_name='boards')
+
+    class Meta:
+        verbose_name = 'Board'
+        verbose_name_plural = 'Boards'
+        ordering = ['title']
 
     def __str__(self):
         """Return string representation of the board.
@@ -71,15 +81,20 @@ class Task(models.Model):
     details = models.TextField(blank=True, default="")
     board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='tasks')
     due_date = models.DateField(null=True, blank=True)
-    assigned = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    assigned = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='assigned_tasks')
     reviewer = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='reviewer',
+        related_name='reviewed_tasks',
         null=True,
         blank=True)
     status = models.CharField(max_length=20, default="todo",)
     priority = models.CharField(max_length=20, default='Medium')
+
+    class Meta:
+        verbose_name = 'Task'
+        verbose_name_plural = 'Tasks'
+        ordering = ['due_date', 'priority', 'title']
 
     def __str__(self):
         """Return string representation of the task.
@@ -109,6 +124,11 @@ class Comment(models.Model):
     id = models.AutoField(primary_key=True)
     content = models.TextField()
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments')
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
     created_at = models.DateTimeField(auto_now_add=True)
-    board = models.ForeignKey(Board, on_delete=models.CASCADE)
+    board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='board_comments')
+
+    class Meta:
+        verbose_name = 'Comment'
+        verbose_name_plural = 'Comments'
+        ordering = ['created_at']

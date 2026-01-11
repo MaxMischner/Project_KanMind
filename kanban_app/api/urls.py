@@ -1,5 +1,25 @@
 from django.urls import path
-from .views import BoardViewSet, DashboardViewSet, BoardDetailViewSet, TaskDetailViewSet, UserProfilDetailViewSet, UserProfilViewSet, TaskViewSet, CommentViewSet, EmailCheckView, TaskCommentListView, TaskCommentDetailView, AssignedTasksView, ReviewerTasksView
+from .views import (
+    BoardViewSet,
+    DashboardViewSet,
+    UserProfilViewSet,
+    TaskViewSet,
+    CommentViewSet,
+    EmailCheckView,
+    TaskCommentListView,
+    TaskCommentDetailView,
+    AssignedTasksView,
+    ReviewerTasksView,
+)
+
+board_list = BoardViewSet.as_view({'get': 'list', 'post': 'create'})
+board_detail = BoardViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'put': 'update', 'delete': 'destroy'})
+user_list = UserProfilViewSet.as_view({'get': 'list', 'post': 'create'})
+user_detail = UserProfilViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'put': 'update', 'delete': 'destroy'})
+task_list = TaskViewSet.as_view({'get': 'list', 'post': 'create'})
+task_detail = TaskViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'put': 'update', 'delete': 'destroy'})
+comment_list = CommentViewSet.as_view({'get': 'list', 'post': 'create'})
+comment_detail = CommentViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'put': 'update', 'delete': 'destroy'})
 
 urlpatterns = [
     path(
@@ -8,19 +28,19 @@ urlpatterns = [
         name='dashboard-list'),
     path(
         'boards/',
-        BoardViewSet.as_view(),
+        board_list,
         name='boards-list'),
     path(
         'boards/<int:pk>/',
-        BoardDetailViewSet.as_view(),
+        board_detail,
         name='board-detail'),
     path(
         'users/',
-        UserProfilViewSet.as_view(),
+        user_list,
         name='userprofil-list'),
     path(
         'users/<int:pk>/',
-        UserProfilDetailViewSet.as_view(),
+        user_detail,
         name='userprofil-detail'),
     path(
         'tasks/assigned-to-me/',
@@ -32,11 +52,11 @@ urlpatterns = [
         name='reviewer-tasks'),
     path(
         'tasks/',
-        TaskViewSet.as_view(),
+        task_list,
         name='task-list'),
     path(
         'tasks/<int:pk>/',
-        TaskDetailViewSet.as_view(),
+        task_detail,
         name='task-detail'),
     path(
         'tasks/<int:task_id>/comments/',
@@ -48,8 +68,12 @@ urlpatterns = [
         name='task-comment-detail'),
     path(
         'comments/',
-        CommentViewSet.as_view(),
+        comment_list,
         name='comment-list'),
+    path(
+        'comments/<int:pk>/',
+        comment_detail,
+        name='comment-detail'),
     path(
         'email-check/',
         EmailCheckView.as_view(),

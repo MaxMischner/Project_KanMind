@@ -5,12 +5,12 @@ and user profiles. All views require authentication and implement
 custom permissions for board member access control.
 """
 
+from rest_framework import generics, viewsets
 from rest_framework.response import Response
 from kanban_app.api.permissions import IsOwnerOrAdmin
-from kanban_app.api.serilizers import BoardSerializer, CommentSerializer, TaskSerializer, UserSerializer, DashboardSerializer
+from kanban_app.api.serializers import BoardSerializer, CommentSerializer, TaskSerializer, UserSerializer, DashboardSerializer
 from kanban_app.models import Board, Comment, Task, Dashboard
 from django.contrib.auth.models import User
-from rest_framework import generics
 
 
 class DashboardViewSet(generics.ListAPIView):
@@ -19,12 +19,15 @@ class DashboardViewSet(generics.ListAPIView):
     GET /api/dashboards/ - List all dashboards (filtered by ownership).
     """
 
-    queryset = Dashboard.objects.all()
     serializer_class = DashboardSerializer
     permission_classes = [IsOwnerOrAdmin]
 
+    def get_queryset(self):
+        """Return dashboards owned by the requesting user."""
+        return Dashboard.objects.filter(user=self.request.user)
 
-class BoardViewSet(generics.ListCreateAPIView):
+
+class BoardViewSet(viewsets.ModelViewSet):
     """API view for listing and creating boards.
 
     GET /api/boards/ - List all boards where user is a member.
@@ -37,66 +40,33 @@ class BoardViewSet(generics.ListCreateAPIView):
     permission_classes = [IsOwnerOrAdmin]
 
     def get_queryset(self):
-        """Filter boards to only show those where user is a member.
+        """Scope list views to member boards; allow full set for object perms.
 
-        Returns:
-            QuerySet: Boards where the current user is in the members list.
+        For list we filter by membership. For detail actions we return the full
+        queryset so object-level permissions can return 403 instead of 404 for
+        non-members.
         """
-        return Board.objects.filter(users=self.request.user)
-
-    def list(self, request):
-        """List all boards for the current user.
-
-        Args:
-            request (Request): The HTTP request object.
-
-        Returns:
-            Response: JSON array of boards with nested data.
-        """
-        queryset = self.get_queryset()
-        serializer = BoardSerializer(queryset, many=True)
-        return Response(serializer.data)
+        if getattr(self, 'action', None) == 'list':
+            return Board.objects.filter(users=self.request.user)
+        return Board.objects.all()
 
 
-class BoardDetailViewSet(generics.RetrieveUpdateDestroyAPIView):
-    """API view for retrieving, updating, and deleting individual boards.
-
-    GET /api/boards/{id}/ - Retrieve a specific board.
-    PATCH /api/boards/{id}/ - Update a board (members only).
-    DELETE /api/boards/{id}/ - Delete a board (admin only).
-    """
-
-    queryset = Board.objects.all()
-    serializer_class = BoardSerializer
-    permission_classes = [IsOwnerOrAdmin]
-
-
-class UserProfilViewSet(generics.ListCreateAPIView):
+class UserProfilViewSet(viewsets.ModelViewSet):
     """API view for listing and creating user profiles.
 
     GET /api/users/ - List all users.
     POST /api/users/ - Create a new user.
     """
 
-    queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsOwnerOrAdmin]
 
-
-class UserProfilDetailViewSet(generics.RetrieveUpdateDestroyAPIView):
-    """API view for retrieving, updating, and deleting individual user profiles.
-
-    GET /api/users/{id}/ - Retrieve a specific user.
-    PATCH /api/users/{id}/ - Update a user profile.
-    DELETE /api/users/{id}/ - Delete a user (admin only).
-    """
-
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsOwnerOrAdmin]
+    def get_queryset(self):
+        """Return all users; can be restricted later if needed."""
+        return User.objects.all()
 
 
-class TaskViewSet(generics.ListCreateAPIView):
+class TaskViewSet(viewsets.ModelViewSet):
     """API view for listing and creating tasks.
 
     GET /api/tasks/ - List all tasks from boards where user is a member.
@@ -109,37 +79,27 @@ class TaskViewSet(generics.ListCreateAPIView):
     permission_classes = [IsOwnerOrAdmin]
 
     def get_queryset(self):
-        """Filter tasks to only show those from boards where user is a member.
-
-        Returns:
-            QuerySet: Tasks from boards where current user is a member.
-        """
-        return Task.objects.filter(board__users=self.request.user)
+        """Filter list to member boards; allow full set for object perms."""
+        if getattr(self, 'action', None) == 'list':
+            return Task.objects.filter(board__users=self.request.user)
+        return Task.objects.all()
 
 
-class TaskDetailViewSet(generics.RetrieveUpdateDestroyAPIView):
-    """API view for retrieving, updating, and deleting individual tasks.
-
-    GET /api/tasks/{id}/ - Retrieve a specific task.
-    PATCH /api/tasks/{id}/ - Update a task (assigned/reviewer/board members).
-    DELETE /api/tasks/{id}/ - Delete a task (admin only).
-    """
-
-    queryset = Task.objects.all()
-    serializer_class = TaskSerializer
-    permission_classes = [IsOwnerOrAdmin]
-
-
-class CommentViewSet(generics.ListCreateAPIView):
+class CommentViewSet(viewsets.ModelViewSet):
     """API view for listing and creating comments.
 
     GET /api/comments/ - List all comments (filtered by permissions).
     POST /api/comments/ - Create a new comment on a task.
     """
 
-    queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        """Filter list to member boards; allow full set for object perms."""
+        if getattr(self, 'action', None) == 'list':
+            return Comment.objects.filter(task__board__users=self.request.user)
+        return Comment.objects.all()
 
 
 class EmailCheckView(generics.GenericAPIView):
@@ -213,12 +173,9 @@ class TaskCommentDetailView(generics.RetrieveDestroyAPIView):
     permission_classes = [IsOwnerOrAdmin]
 
     def get_queryset(self):
-        """Return all comments.
-
-        Returns:
-            QuerySet: All Comment objects.
-        """
-        return Comment.objects.all()
+        """Return comments belonging to the target task to enforce scoping."""
+        task_id = self.kwargs['task_id']
+        return Comment.objects.filter(task_id=task_id)
 
 
 class AssignedTasksView(generics.ListAPIView):

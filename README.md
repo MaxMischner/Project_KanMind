@@ -2,7 +2,7 @@
 
 ![KanMind Logo](assets/icons/logo_icon.svg)
 
-**KanMind** is a full-stack project management application built with Django REST Framework (backend) and Vanilla JavaScript (frontend). It provides a kanban-style board system for managing tasks, assigning team members, and tracking project progress.
+**KanMind** is a project management application with a Django REST Framework backend. This repository contains the backend only; the frontend is maintained in a separate repository. It provides a kanban-style board system for managing tasks, assigning team members, and tracking project progress.
 
 ---
 
@@ -53,10 +53,10 @@
 - **SQLite3** - Database (can be changed to PostgreSQL/MySQL)
 - **django-cors-headers** - CORS support for frontend-backend communication
 
-### Frontend
-- **Vanilla JavaScript** - No frameworks (ES6+)
-- **HTML5 & CSS3** - Responsive design
-- **Live Server** - Development server (VS Code extension)
+### Frontend (separate repository)
+- Vanilla JavaScript (ES6+), HTML5 & CSS3
+- Served via VS Code Live Server
+- Not included in this backend repository
 
 ### Development Tools
 - **coverage.py** - Test coverage reporting (97% coverage achieved)
@@ -140,15 +140,9 @@ python manage.py runserver
 
 The backend API will be available at: **http://127.0.0.1:8000/**
 
-### Start the Frontend
+### Frontend (optional)
 
-1. Open the project folder in **Visual Studio Code**
-2. Right-click on `index.html` (root level)
-3. Select **"Open with Live Server"**
-
-The frontend will open in your browser at: **http://127.0.0.1:5500/**
-
-> **Important**: Both backend (port 8000) and frontend (port 5500) must be running simultaneously for the application to work properly.
+The frontend runs from a separate repository. If you use it locally, start it via VS Code Live Server (default port 5500) and ensure the backend is running at port 8000. CORS is configured for `http://127.0.0.1:5500`.
 
 ---
 
@@ -156,46 +150,30 @@ The frontend will open in your browser at: **http://127.0.0.1:5500/**
 
 ```
 Project_KanMind/
-├── boards_app/                    # Main boards application
-│   ├── models.py                  # Database models (Board, Task, Comment)
-│   ├── tests.py                   # Comprehensive test suite
-│   ├── api/
-│   │   ├── serilizers.py         # DRF serializers with field mapping
-│   │   ├── views.py              # API views and endpoints
-│   │   ├── permissions.py        # Custom permission classes
-│   │   └── urls.py               # Board API URL routing
-│   └── migrations/               # Database migrations
-│
-├── user_auth_app/                # Authentication application
-│   ├── models.py                 # User-related models
-│   ├── tests.py                  # Authentication tests
-│   ├── api/
-│   │   ├── serializers.py        # Registration & login serializers
-│   │   ├── views.py              # Auth endpoints
-│   │   └── urls.py               # Auth API URL routing
-│   └── migrations/
-│
-├── KanMind_Backend/              # Django project settings
+├── core/                         # Django project (settings, urls, wsgi, asgi)
 │   ├── settings.py               # Project configuration
 │   ├── urls.py                   # Main URL routing
 │   ├── wsgi.py                   # WSGI configuration
 │   └── asgi.py                   # ASGI configuration
 │
-├── pages/                        # Frontend HTML pages
-│   ├── auth/                     # Login & registration pages
-│   ├── board/                    # Individual board view
-│   ├── boards/                   # Boards list view
-│   └── dashboard/                # User dashboard
+├── kanban_app/                   # Kanban functionality (boards, tasks, comments)
+│   ├── models.py                 # Database models: Board, Task, Comment, Dashboard
+│   ├── admin.py                  # Admin registrations and configuration
+│   ├── tests.py                  # Comprehensive tests
+│   └── api/
+│       ├── serializers.py        # DRF serializers with field mapping
+│       ├── views.py              # API views and endpoints
+│       ├── permissions.py        # Custom permission classes
+│       └── urls.py               # Kanban API URL routing
 │
-├── shared/                       # Shared frontend resources
-│   ├── css/                      # Stylesheets
-│   └── js/                       # JavaScript utilities
-│       ├── api.js                # API communication
-│       ├── auth.js               # Authentication logic
-│       ├── config.js             # API endpoint configuration
-│       └── ui_helper.js          # UI utilities
+├── auth_app/                     # Authentication (registration, login, profiles)
+│   ├── admin.py                  # Admin (User is handled by Django)
+│   ├── tests.py                  # Authentication tests
+│   └── api/
+│       ├── serializers.py        # Registration & login serializers
+│       ├── views.py              # Auth endpoints
+│       └── urls.py               # Auth API URL routing
 │
-├── assets/                       # Static assets (fonts, icons)
 ├── manage.py                     # Django management script
 ├── requirements.txt              # Python dependencies
 └── README.md                     # This file
@@ -471,7 +449,7 @@ const BASE_URL = 'http://127.0.0.1:YOUR_PORT/api/';
 
 1. Create/modify models in `boards_app/models.py`
 2. Run migrations: `python manage.py makemigrations && python manage.py migrate`
-3. Create serializers in `boards_app/api/serilizers.py`
+3. Create serializers in `kanban_app/api/serializers.py`
 4. Create views in `boards_app/api/views.py`
 5. Add URL routes in `boards_app/api/urls.py`
 6. Write tests in `boards_app/tests.py`

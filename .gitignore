@@ -81,6 +81,9 @@ styles.css
 /assets/
 LICENSE.md
 
+# Exclude KanMind subfolder (if exists)
+/KanMind/
+
 # Django secret key and environment variables
 .env.local
 .env.production
