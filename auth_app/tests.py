@@ -15,7 +15,7 @@ class UserRegistrationTest(APITestCase):
             'repeated_password': 'testpass123'
         }
         response = self.client.post('/api/auth/registration/', data, format='json')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         self.assertIn('token', response.data)
         self.assertIn('user_id', response.data)
         self.assertIn('email', response.data)
@@ -55,7 +55,7 @@ class UserRegistrationTest(APITestCase):
             'repeated_password': 'testpass123'
         }
         response = self.client.post('/api/auth/registration/', data, format='json')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         user = User.objects.get(email='john@test.com')
         self.assertEqual(user.first_name, 'John')
         self.assertEqual(user.last_name, 'Doe')
@@ -68,7 +68,7 @@ class UserRegistrationTest(APITestCase):
             'repeated_password': 'testpass123'
         }
         response = self.client.post('/api/auth/registration/', data, format='json')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         user = User.objects.get(email='testuser@test.com')
         token = Token.objects.get(user=user)
         self.assertIsNotNone(token.key)
@@ -106,9 +106,7 @@ class UserLoginTest(APITestCase):
             'password': 'testpass123'
         }
         response = self.client.post('/api/auth/login/', data, format='json')
-        # Backend returns 200 even if user not found (by design)
-        # So we just check that it's not a 201 or 500
-        self.assertIn(response.status_code, [200, 400])
+        self.assertEqual(response.status_code, 400)
 
     def test_login_invalid_password(self):
         data = {
@@ -116,24 +114,21 @@ class UserLoginTest(APITestCase):
             'password': 'wrongpassword'
         }
         response = self.client.post('/api/auth/login/', data, format='json')
-        # Backend returns 200 even if password is wrong (by design)
-        self.assertIn(response.status_code, [200, 400])
+        self.assertEqual(response.status_code, 400)
 
     def test_login_missing_email(self):
         data = {
             'password': 'testpass123'
         }
         response = self.client.post('/api/auth/login/', data, format='json')
-        # Missing email field
-        self.assertIn(response.status_code, [200, 400])
+        self.assertEqual(response.status_code, 400)
 
     def test_login_missing_password(self):
         data = {
             'email': 'test@test.com'
         }
         response = self.client.post('/api/auth/login/', data, format='json')
-        # Missing password field
-        self.assertIn(response.status_code, [200, 400])
+        self.assertEqual(response.status_code, 400)
 
 
 class EmailCheckTest(APITestCase):

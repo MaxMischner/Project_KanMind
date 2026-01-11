@@ -70,7 +70,6 @@ class RegistrationView(APIView):
                 'email': saved_account.email,
                 'fullname': saved_account.get_full_name() or saved_account.username
             }
+            return Response(data, status=201)
         else:
-            data = serializer.errors
-
-        return Response(data)
+            return Response(serializer.errors, status=400)

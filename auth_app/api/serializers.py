@@ -253,7 +253,6 @@ class CostomLoginView(ObtainAuthToken):
             data['user_id'] = user.id
             data['email'] = user.email
             data['fullname'] = user.get_full_name() or user.username
+            return Response(data, status=200)
         else:
-            data = serializers.errors
-
-        return Response(data)
+            return Response(serializers.errors, status=400)

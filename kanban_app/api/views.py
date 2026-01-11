@@ -7,10 +7,15 @@ custom permissions for board member access control.
 
 from rest_framework import generics, viewsets
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from kanban_app.api.permissions import IsOwnerOrAdmin
 from kanban_app.api.serializers import BoardSerializer, CommentSerializer, TaskSerializer, UserSerializer, DashboardSerializer
 from kanban_app.models import Board, Comment, Task, Dashboard
 from django.contrib.auth.models import User
+from django.db.models import Q
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404
 
 
 class DashboardViewSet(generics.ListAPIView):
@@ -47,7 +52,9 @@ class BoardViewSet(viewsets.ModelViewSet):
         non-members.
         """
         if getattr(self, 'action', None) == 'list':
-            return Board.objects.filter(users=self.request.user)
+            return Board.objects.filter(
+                Q(users=self.request.user) | Q(owner=self.request.user)
+            ).distinct()
         return Board.objects.all()
 
     def perform_create(self, serializer):
@@ -59,7 +66,7 @@ class BoardViewSet(viewsets.ModelViewSet):
         Args:
             serializer (BoardSerializer): The serializer with validated data.
         """
-        board = serializer.save()
+        board = serializer.save(owner=self.request.user)
         board.users.add(self.request.user)
 
 
@@ -95,6 +102,20 @@ class TaskViewSet(viewsets.ModelViewSet):
         if getattr(self, 'action', None) == 'list':
             return Task.objects.filter(board__users=self.request.user)
         return Task.objects.all()
+
+    def perform_create(self, serializer):
+        """Ensure creator is member/owner of the board before creating a task."""
+        board = serializer.validated_data.get('board')
+        if not board:
+            raise PermissionDenied('Board is required')
+
+        is_owner = self.request.user == getattr(board, 'owner', None)
+        is_member = board.users.filter(id=self.request.user.id).exists()
+
+        if not (is_owner or is_member):
+            raise PermissionDenied('You must be a board member to create tasks.')
+
+        serializer.save(created_by=self.request.user)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -138,9 +159,18 @@ class EmailCheckView(generics.GenericAPIView):
             return Response({'error': 'Email parameter is required'}, status=400)
 
         try:
+            validate_email(email)
+        except ValidationError:
+            return Response({'error': 'Invalid email format'}, status=400)
+
+        try:
             user = User.objects.get(email=email)
-            serializer = UserSerializer(user)
-            return Response(serializer.data)
+            data = {
+                'id': user.id,
+                'email': user.email,
+                'fullname': user.get_full_name().strip() or user.username,
+            }
+            return Response(data)
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
 
@@ -162,7 +192,13 @@ class TaskCommentListView(generics.ListCreateAPIView):
             QuerySet: Comments belonging to the task specified in URL.
         """
         task_id = self.kwargs['task_id']
-        return Comment.objects.filter(task_id=task_id)
+        task = get_object_or_404(Task, pk=task_id)
+        user = self.request.user
+        is_owner = user == getattr(task.board, 'owner', None)
+        is_member = task.board.users.filter(id=user.id).exists()
+        if not (is_owner or is_member):
+            raise PermissionDenied('You must be a board member to view comments.')
+        return Comment.objects.filter(task=task)
 
     def perform_create(self, serializer):
         """Save a new comment with the task_id from URL.
@@ -171,8 +207,13 @@ class TaskCommentListView(generics.ListCreateAPIView):
             serializer (CommentSerializer): The serializer with validated data.
         """
         task_id = self.kwargs['task_id']
-        task = Task.objects.get(pk=task_id)
-        serializer.save(task=task, author=self.request.user, board=task.board)
+        task = get_object_or_404(Task, pk=task_id)
+        user = self.request.user
+        is_owner = user == getattr(task.board, 'owner', None)
+        is_member = task.board.users.filter(id=user.id).exists()
+        if not (is_owner or is_member):
+            raise PermissionDenied('You must be a board member to create comments.')
+        serializer.save(task=task, author=user, board=task.board)
 
 
 class TaskCommentDetailView(generics.RetrieveDestroyAPIView):
@@ -188,7 +229,13 @@ class TaskCommentDetailView(generics.RetrieveDestroyAPIView):
     def get_queryset(self):
         """Return comments belonging to the target task to enforce scoping."""
         task_id = self.kwargs['task_id']
-        return Comment.objects.filter(task_id=task_id)
+        task = get_object_or_404(Task, pk=task_id)
+        user = self.request.user
+        is_owner = user == getattr(task.board, 'owner', None)
+        is_member = task.board.users.filter(id=user.id).exists()
+        if not (is_owner or is_member):
+            raise PermissionDenied('You must be a board member to view or delete comments.')
+        return Comment.objects.filter(task=task)
 
 
 class AssignedTasksView(generics.ListAPIView):

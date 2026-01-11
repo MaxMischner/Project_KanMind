@@ -113,6 +113,44 @@ class TaskSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Title cannot be empty.')
         return cleaned
 
+    def validate(self, attrs):
+        """Validate status/priority choices, board immutability, and membership.
+
+        - Enforce allowed statuses and priorities.
+        - Prevent changing board on update.
+        - Ensure assignee/reviewer belong to the task's board (or owner).
+        """
+        allowed_statuses = {'to-do', 'in-progress', 'review', 'done', 'todo', 'in_progress'}
+        allowed_priorities = {'low', 'medium', 'high'}
+
+        raw_status = (attrs.get('status') or '')
+        status = raw_status.lower()
+        status_normalized = status.replace('_', '-')
+        priority = (attrs.get('priority') or '').lower()
+
+        board = attrs.get('board') or getattr(self.instance, 'board', None)
+        assignee = attrs.get('assigned')
+        reviewer = attrs.get('reviewer')
+
+        if status and status not in allowed_statuses and status_normalized not in allowed_statuses:
+            raise serializers.ValidationError({'status': 'Status must be one of to-do, in-progress, review, done.'})
+        if priority and priority not in allowed_priorities:
+            raise serializers.ValidationError({'priority': 'Priority must be one of low, medium, high.'})
+
+        # Disallow board changes on update
+        if self.instance and 'board' in attrs and attrs['board'] != self.instance.board:
+            raise serializers.ValidationError({'board': 'Changing board is not allowed.'})
+
+        if board:
+            members_qs = board.users.all()
+            owner = getattr(board, 'owner', None)
+            if assignee and assignee not in members_qs and assignee != owner:
+                raise serializers.ValidationError({'assignee_id': 'Assignee must be a board member.'})
+            if reviewer and reviewer not in members_qs and reviewer != owner:
+                raise serializers.ValidationError({'reviewer_id': 'Reviewer must be a board member.'})
+
+        return attrs
+
     
 
     class Meta:
@@ -150,6 +188,7 @@ class BoardSerializer(serializers.ModelSerializer):
     users = serializers.PrimaryKeyRelatedField(
         many=True, queryset=User.objects.all(), required=False)
     members = UserSerializer(many=True, read_only=True, source='users')
+    members_data = UserSerializer(many=True, read_only=True, source='users')
     members_write = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=User.objects.all(),
@@ -157,6 +196,8 @@ class BoardSerializer(serializers.ModelSerializer):
         write_only=True,
         source='users')
     tasks = TaskSerializer(many=True, read_only=True)
+    owner_id = serializers.ReadOnlyField(source='owner.id')
+    owner_data = UserSerializer(read_only=True, source='owner')
     member_count = serializers.SerializerMethodField()
     ticket_count = serializers.SerializerMethodField()
     tasks_to_do_count = serializers.SerializerMethodField()
@@ -213,23 +254,20 @@ class BoardSerializer(serializers.ModelSerializer):
             board.users.add(user)
         return board
 
-    def partial_update(self, instance, validated_data):
-        """Update board with new members.
+    def update(self, instance, validated_data):
+        """Update board fields and reset members to provided list.
 
-        Handles adding new members to the board's ManyToMany relationship.
-
-        Args:
-            instance (Board): The board instance being updated.
-            validated_data (dict): Validated data containing updates.
-
-        Returns:
-            Board: The updated board instance.
+        Ensures provided members replace existing ones and keeps the owner
+        in the members set.
         """
         users_data = validated_data.pop('users', None)
-        if users_data:
-            for user in users_data:
-                instance.users.add(user)
-        return super().partial_update(instance, validated_data)
+        board = super().update(instance, validated_data)
+        if users_data is not None:
+            # replace members with provided set and ensure owner is included
+            board.users.set(users_data)
+            if board.owner:
+                board.users.add(board.owner)
+        return board
 
     def get_member_count(self, obj):
         return obj.users.count()
@@ -245,7 +283,7 @@ class BoardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Board
-        fields = ['id', 'title', 'description', 'users', 'members', 'members_write', 'tasks', 'member_count', 'ticket_count', 'tasks_to_do_count', 'tasks_high_prio_count']
+        fields = ['id', 'title', 'description', 'owner_id', 'owner_data', 'users', 'members', 'members_data', 'members_write', 'tasks', 'member_count', 'ticket_count', 'tasks_to_do_count', 'tasks_high_prio_count']
 
 
 class DashboardSerializer(serializers.ModelSerializer):

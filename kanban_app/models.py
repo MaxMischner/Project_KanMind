@@ -41,6 +41,12 @@ class Board(models.Model):
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='owned_boards',
+        null=True,
+        blank=True)
     users = models.ManyToManyField(User, blank=True, related_name='boards')
 
     class Meta:
@@ -81,6 +87,12 @@ class Task(models.Model):
     details = models.TextField(blank=True, default="")
     board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='tasks')
     due_date = models.DateField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_tasks')
     assigned = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='assigned_tasks')
     reviewer = models.ForeignKey(
         User,

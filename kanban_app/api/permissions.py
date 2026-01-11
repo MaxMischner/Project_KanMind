@@ -5,6 +5,7 @@ to boards, tasks, and comments based on ownership and admin status.
 """
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.exceptions import NotAuthenticated
 
 
 class IsStaffOrReadOnlyPermission(BasePermission):
@@ -80,7 +81,10 @@ class IsOwnerOrAdmin(BasePermission):
         Returns:
             bool: True if user is authenticated.
         """
-        return bool(request.user and request.user.is_authenticated)
+        if not (request.user and request.user.is_authenticated):
+            # Mirror DRF's IsAuthenticated behavior to return 401 instead of 403
+            raise NotAuthenticated()
+        return True
 
     def _check_board_ownership(self, request, obj):
         """Check if user is a member of the board.
@@ -92,7 +96,7 @@ class IsOwnerOrAdmin(BasePermission):
         Returns:
             bool: True if user is in the board's members list.
         """
-        return request.user in obj.users.all()
+        return request.user == getattr(obj, 'owner', None) or request.user in obj.users.all()
 
     def _check_task_ownership(self, request, obj):
         """Check if user has access to the task.
@@ -100,6 +104,7 @@ class IsOwnerOrAdmin(BasePermission):
         User has access if they are:
         - The assigned user
         - The reviewer
+        - The task creator
         - A member of the board the task belongs to
 
         Args:
@@ -111,6 +116,7 @@ class IsOwnerOrAdmin(BasePermission):
         """
         return (obj.assigned == request.user or
                 obj.reviewer == request.user or
+                getattr(obj, 'created_by', None) == request.user or
                 request.user in obj.board.users.all())
 
     def _get_ownership_status(self, request, obj):
@@ -157,10 +163,20 @@ class IsOwnerOrAdmin(BasePermission):
         """
         is_admin = bool(request.user and request.user.is_superuser)
         is_owner = self._get_ownership_status(request, obj)
+        is_board = hasattr(obj, 'users')
+        is_board_owner = is_board and request.user == getattr(obj, 'owner', None)
+        is_task = hasattr(obj, 'board') and hasattr(obj, 'title')
 
         if request.method in SAFE_METHODS:
-            return True
+            return is_owner or is_admin
         elif request.method == 'DELETE':
-            return is_admin
+            if is_board:
+                # Only the board owner may delete
+                return is_board_owner
+            if is_task:
+                board_owner = request.user == getattr(obj.board, 'owner', None)
+                is_creator = request.user == getattr(obj, 'created_by', None)
+                return board_owner or is_creator
+            return is_owner
         else:
             return is_owner or is_admin
