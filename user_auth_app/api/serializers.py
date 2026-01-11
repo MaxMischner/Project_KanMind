@@ -30,8 +30,8 @@ class RegistrationSerializer(serializers.ModelSerializer):
         
         if email and User.objects.filter(email=email).exists():
             raise serializers.ValidationError({'email': 'Email is already in use.'})
-        if User.objects.filter(username=fullname).exists():
-            raise serializers.ValidationError({'fullname': 'Username is already taken.'})
+        if User.objects.filter(username=email).exists():
+            raise serializers.ValidationError({'email': 'Email is already in use.'})
         if email is None:
             raise serializers.ValidationError({'email': 'Email is required.'})
         if fullname is None:
@@ -41,7 +41,12 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if repeated_password is None:
             raise serializers.ValidationError({'repeated_password': 'Repeated password is required.'})
 
-        account = User(username=fullname, email=email)
+        # Split fullname into first_name and last_name
+        fullname_parts = fullname.strip().split(' ', 1)
+        first_name = fullname_parts[0]
+        last_name = fullname_parts[1] if len(fullname_parts) > 1 else ''
+
+        account = User(username=email, email=email, first_name=first_name, last_name=last_name)
         account.set_password(password)
         account.save()
         return account

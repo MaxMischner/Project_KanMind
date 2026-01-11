@@ -12,9 +12,12 @@ class DashboardViewSet(generics.ListAPIView):
     permission_classes = [IsOwnerOrAdmin]
 
 class BoardViewSet(generics.ListCreateAPIView):
-    queryset = Board.objects.all()
     serializer_class = BoardSerializer
     permission_classes = [IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        # Show only boards where user is a member
+        return Board.objects.filter(users=self.request.user)
 
     def list(self, request):
         queryset = self.get_queryset()
@@ -37,9 +40,12 @@ class UserProfilDetailViewSet(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsOwnerOrAdmin]
 
 class TaskViewSet(generics.ListCreateAPIView):
-    queryset = Task.objects.all()
     serializer_class = TaskSerializer
     permission_classes = [IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        # Show only tasks from boards where user is a member
+        return Task.objects.filter(board__users=self.request.user)
 
 class TaskDetailViewSet(generics.RetrieveUpdateDestroyAPIView):
     queryset = Task.objects.all()

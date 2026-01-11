@@ -5,9 +5,9 @@ const GUEST_LOGIN = {
 
 const API_BASE_URL = 'http://127.0.0.1:8000/api/';
 
-const LOGIN_URL = 'login/';
+const LOGIN_URL = 'auth/login/';
 
-const REGISTER_URL = 'registration/';
+const REGISTER_URL = 'auth/registration/';
 
 const BOARDS_URL = 'boards/';
 

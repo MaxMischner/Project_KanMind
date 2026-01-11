@@ -22,6 +22,10 @@ class TaskSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True, read_only=True)
     assigned = UserSerializer(read_only=True)
     reviewer = UserSerializer(read_only=True)
+    details = serializers.SerializerMethodField()
+    
+    def get_details(self, obj):
+        return obj.details or ""
     
     class Meta:
         model = Task
@@ -42,11 +46,17 @@ class BoardSerializer(serializers.ModelSerializer):
             data['members_write'] = data.pop('members')
         return super().to_internal_value(data)
 
+    def create(self, validated_data):
+        users_data = validated_data.pop('users', [])
+        board = Board.objects.create(**validated_data)
+        for user in users_data:
+            board.users.add(user)
+        return board
+
     def partial_update(self, instance, validated_data):
         users_data = validated_data.pop('users', None)
         if users_data:
-            for user_data in users_data:
-                user, created = User.objects.get_or_create(**user_data)
+            for user in users_data:
                 instance.users.add(user)
         return super().partial_update(instance, validated_data)
     

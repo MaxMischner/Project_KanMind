@@ -23,11 +23,10 @@ class RegistrationView(APIView):
         serializer = RegistrationSerializer(data=request.data)
         if serializer.is_valid():
             saved_account = serializer.save()
-            token = Token.objects.create(user=saved_account)
+            token, created = Token.objects.get_or_create(user=saved_account)
             data = {
                 'token': token.key,
                 'user_id': saved_account.id,
-                'username': saved_account.username,
                 'email': saved_account.email,
                 'fullname': saved_account.get_full_name() or saved_account.username
             }
