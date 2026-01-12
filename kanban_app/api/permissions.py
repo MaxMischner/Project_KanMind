@@ -5,6 +5,32 @@ to boards, tasks, and comments based on ownership and admin status.
 """
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.exceptions import NotAuthenticated
+
+
+class IsAuthenticatedWithProper401(BasePermission):
+    """Custom IsAuthenticated that returns 401 instead of 403.
+    
+    DRF's default IsAuthenticated returns False which results in 403.
+    This class raises NotAuthenticated exception to properly return 401.
+    """
+    
+    def has_permission(self, request, view):
+        """Check if user is authenticated, raise 401 if not.
+        
+        Args:
+            request (Request): The HTTP request.
+            view (View): The view being accessed.
+            
+        Returns:
+            bool: True if authenticated.
+            
+        Raises:
+            NotAuthenticated: If user is not authenticated (returns 401).
+        """
+        if not (request.user and request.user.is_authenticated):
+            raise NotAuthenticated('Authentication credentials were not provided.')
+        return True
 
 
 class IsStaffOrReadOnlyPermission(BasePermission):
@@ -78,9 +104,9 @@ class IsOwnerOrAdmin(BasePermission):
             view (View): The view being accessed.
 
         Returns:
-            bool: True if user is authenticated.
+            bool: Always True since authentication is handled by IsAuthenticated.
         """
-        return bool(request.user and request.user.is_authenticated)
+        return True
 
     def _check_board_ownership(self, request, obj):
         """Check if user is a member of the board.

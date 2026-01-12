@@ -8,7 +8,7 @@ custom permissions for board member access control.
 from rest_framework import generics, viewsets
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
-from kanban_app.api.permissions import IsOwnerOrAdmin
+from kanban_app.api.permissions import IsOwnerOrAdmin, IsAuthenticatedWithProper401
 from kanban_app.api.serializers import BoardSerializer, BoardDetailSerializer, BoardPatchSerializer, CommentSerializer, TaskSerializer, TaskListSerializer, TaskUpdateSerializer, UserSerializer, UserNestedSerializer, DashboardSerializer
 from kanban_app.models import Board, Comment, Task, Dashboard
 from django.contrib.auth.models import User
@@ -25,7 +25,7 @@ class DashboardViewSet(generics.ListAPIView):
     """
 
     serializer_class = DashboardSerializer
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_queryset(self):
         """Return dashboards owned by the requesting user."""
@@ -41,7 +41,7 @@ class BoardViewSet(viewsets.ModelViewSet):
     Only shows boards where the authenticated user is a member.
     """
 
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action."""
@@ -85,7 +85,7 @@ class UserProfilViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = UserSerializer
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_queryset(self):
         """Return all users; can be restricted later if needed."""
@@ -101,7 +101,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     Only shows tasks from boards where the authenticated user is a member.
     """
 
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_serializer_class(self):
         """Return TaskUpdateSerializer for update/partial_update, TaskListSerializer for list/create, TaskSerializer for detail."""
@@ -140,7 +140,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = CommentSerializer
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_queryset(self):
         """Filter list to member boards; allow full set for object perms."""
@@ -157,7 +157,7 @@ class EmailCheckView(generics.GenericAPIView):
     Used by frontend to look up users by email when adding board members.
     """
 
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get(self, request):
         """Look up a user by email address.
@@ -193,7 +193,7 @@ class TaskCommentListView(generics.ListCreateAPIView):
     """
 
     serializer_class = CommentSerializer
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_queryset(self):
         """Filter comments to only show those for the specified task.
@@ -234,7 +234,7 @@ class TaskCommentDetailView(generics.RetrieveDestroyAPIView):
     """
 
     serializer_class = CommentSerializer
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_queryset(self):
         """Return comments belonging to the target task to enforce scoping."""
@@ -257,7 +257,7 @@ class AssignedTasksView(generics.ListAPIView):
     """
 
     serializer_class = TaskListSerializer
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_queryset(self):
         """Filter tasks to only show those assigned to current user.
@@ -277,7 +277,7 @@ class ReviewerTasksView(generics.ListAPIView):
     """
 
     serializer_class = TaskListSerializer
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_queryset(self):
         """Filter tasks to only show those being reviewed by current user.

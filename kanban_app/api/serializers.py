@@ -185,6 +185,7 @@ class TaskSerializer(serializers.ModelSerializer):
         write_only=True,
         source='reviewer')
     details = serializers.SerializerMethodField()
+    description = serializers.CharField(source='details', required=False, allow_blank=True)
 
     def get_details(self, obj):
         """Return task details with fallback to empty string.
@@ -196,7 +197,6 @@ class TaskSerializer(serializers.ModelSerializer):
             str: Task details or empty string if None.
         """
         return obj.details or ""
-    description = serializers.CharField(source='details', required=False, allow_blank=True)
     comments_count = serializers.SerializerMethodField()
 
     def validate_title(self, value):
@@ -253,8 +253,6 @@ class TaskSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'reviewer_id': 'Reviewer must be a board member.'})
 
         return attrs
-
-    
 
     class Meta:
         model = Task
