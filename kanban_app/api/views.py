@@ -16,6 +16,7 @@ from django.db.models import Q
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+from rest_framework.authentication import TokenAuthentication
 
 
 class DashboardViewSet(generics.ListAPIView):
@@ -24,6 +25,7 @@ class DashboardViewSet(generics.ListAPIView):
     GET /api/dashboards/ - List all dashboards (filtered by ownership).
     """
 
+    authentication_classes = [TokenAuthentication]
     serializer_class = DashboardSerializer
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
@@ -40,7 +42,7 @@ class BoardViewSet(viewsets.ModelViewSet):
 
     Only shows boards where the authenticated user is a member.
     """
-
+    authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_serializer_class(self):
@@ -84,6 +86,7 @@ class UserProfilViewSet(viewsets.ModelViewSet):
     POST /api/users/ - Create a new user.
     """
 
+    authentication_classes = [TokenAuthentication]
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
@@ -101,6 +104,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     Only shows tasks from boards where the authenticated user is a member.
     """
 
+    authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get_serializer_class(self):
@@ -139,6 +143,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     POST /api/comments/ - Create a new comment on a task.
     """
 
+    authentication_classes = [TokenAuthentication]
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
@@ -157,6 +162,7 @@ class EmailCheckView(generics.GenericAPIView):
     Used by frontend to look up users by email when adding board members.
     """
 
+    authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
     def get(self, request):
@@ -192,6 +198,7 @@ class TaskCommentListView(generics.ListCreateAPIView):
     POST /api/tasks/{task_id}/comments/ - Add a comment to a task.
     """
 
+    authentication_classes = [TokenAuthentication]
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
@@ -233,6 +240,7 @@ class TaskCommentDetailView(generics.RetrieveDestroyAPIView):
     DELETE /api/comments/{id}/ - Delete a comment (admin only).
     """
 
+    authentication_classes = [TokenAuthentication]
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
@@ -256,6 +264,7 @@ class AssignedTasksView(generics.ListAPIView):
     Returns only tasks where the authenticated user is the assigned person.
     """
 
+    authentication_classes = [TokenAuthentication]
     serializer_class = TaskListSerializer
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 
@@ -276,6 +285,7 @@ class ReviewerTasksView(generics.ListAPIView):
     Returns only tasks where the authenticated user is the reviewer.
     """
 
+    authentication_classes = [TokenAuthentication]
     serializer_class = TaskListSerializer
     permission_classes = [IsAuthenticatedWithProper401, IsOwnerOrAdmin]
 

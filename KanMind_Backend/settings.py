@@ -138,7 +138,6 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ],
-    'EXCEPTION_HANDLER': 'kanban_app.api.exception_handler.custom_exception_handler',
 }
 
 # CORS settings
