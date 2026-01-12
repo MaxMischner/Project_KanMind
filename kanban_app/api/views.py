@@ -9,7 +9,7 @@ from rest_framework import generics, viewsets
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from kanban_app.api.permissions import IsOwnerOrAdmin
-from kanban_app.api.serializers import BoardSerializer, CommentSerializer, TaskSerializer, UserSerializer, DashboardSerializer
+from kanban_app.api.serializers import BoardSerializer, BoardDetailSerializer, BoardPatchSerializer, CommentSerializer, TaskSerializer, TaskListSerializer, TaskUpdateSerializer, UserSerializer, UserNestedSerializer, DashboardSerializer
 from kanban_app.models import Board, Comment, Task, Dashboard
 from django.contrib.auth.models import User
 from django.db.models import Q
@@ -41,8 +41,15 @@ class BoardViewSet(viewsets.ModelViewSet):
     Only shows boards where the authenticated user is a member.
     """
 
-    serializer_class = BoardSerializer
     permission_classes = [IsOwnerOrAdmin]
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == 'retrieve':
+            return BoardDetailSerializer
+        elif self.action in ['update', 'partial_update']:
+            return BoardPatchSerializer
+        return BoardSerializer
 
     def get_queryset(self):
         """Scope list views to member boards; allow full set for object perms.
@@ -94,8 +101,15 @@ class TaskViewSet(viewsets.ModelViewSet):
     Only shows tasks from boards where the authenticated user is a member.
     """
 
-    serializer_class = TaskSerializer
     permission_classes = [IsOwnerOrAdmin]
+
+    def get_serializer_class(self):
+        """Return TaskUpdateSerializer for update/partial_update, TaskListSerializer for list/create, TaskSerializer for detail."""
+        if self.action in ['update', 'partial_update']:
+            return TaskUpdateSerializer
+        elif self.action in ['list', 'create']:
+            return TaskListSerializer
+        return TaskSerializer
 
     def get_queryset(self):
         """Filter list to member boards; allow full set for object perms."""
@@ -165,12 +179,8 @@ class EmailCheckView(generics.GenericAPIView):
 
         try:
             user = User.objects.get(email=email)
-            data = {
-                'id': user.id,
-                'email': user.email,
-                'fullname': user.get_full_name().strip() or user.username,
-            }
-            return Response(data)
+            serializer = UserNestedSerializer(user)
+            return Response(serializer.data)
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
 
@@ -246,7 +256,7 @@ class AssignedTasksView(generics.ListAPIView):
     Returns only tasks where the authenticated user is the assigned person.
     """
 
-    serializer_class = TaskSerializer
+    serializer_class = TaskListSerializer
     permission_classes = [IsOwnerOrAdmin]
 
     def get_queryset(self):
@@ -266,7 +276,7 @@ class ReviewerTasksView(generics.ListAPIView):
     Returns only tasks where the authenticated user is the reviewer.
     """
 
-    serializer_class = TaskSerializer
+    serializer_class = TaskListSerializer
     permission_classes = [IsOwnerOrAdmin]
 
     def get_queryset(self):

@@ -59,6 +59,109 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'fullname']
 
 
+class UserNestedSerializer(serializers.ModelSerializer):
+    """Minimal user serializer for nested use in responses.
+    
+    Returns only: id, email, fullname
+    Used in nested contexts like board members list or task assignee/reviewer.
+    """
+    
+    fullname = serializers.SerializerMethodField()
+
+    def get_fullname(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()
+
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'fullname']
+
+
+class TaskNestedSerializer(serializers.ModelSerializer):
+    """Minimal task serializer for nested use in Board detail responses.
+    
+    Returns only fields needed by board detail view:
+    - id, title, description, status, priority, assignee, reviewer, due_date, comments_count
+    
+    Excludes board field (redundant in nested context) and comments array.
+    """
+    
+    assignee = UserNestedSerializer(read_only=True, source='assigned')
+    reviewer = UserNestedSerializer(read_only=True)
+    description = serializers.CharField(source='details', required=False, allow_blank=True)
+    comments_count = serializers.SerializerMethodField()
+    
+    def get_comments_count(self, obj):
+        return obj.comments.count()
+    
+    class Meta:
+        model = Task
+        fields = ['id', 'title', 'description', 'status', 'priority', 'assignee', 'reviewer', 'due_date', 'comments_count']
+
+
+class TaskListSerializer(serializers.ModelSerializer):
+    """Serializer for Task list responses (assigned-to-me, reviewing, etc).
+    
+    Returns fields needed for task list views:
+    - id, board, title, description, status, priority, assignee, reviewer, due_date, comments_count
+    
+    Includes board ID. Excludes comments array and details field.
+    """
+    
+    assignee = UserNestedSerializer(read_only=True, source='assigned')
+    reviewer = UserNestedSerializer(read_only=True)
+    assignee_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        write_only=True,
+        source='assigned',
+        allow_null=True)
+    reviewer_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        write_only=True,
+        source='reviewer',
+        allow_null=True)
+    description = serializers.CharField(source='details', required=False, allow_blank=True)
+    comments_count = serializers.SerializerMethodField()
+    
+    def get_comments_count(self, obj):
+        return obj.comments.count()
+    
+    class Meta:
+        model = Task
+        fields = ['id', 'board', 'title', 'description', 'status', 'priority', 'assignee', 'assignee_id', 'reviewer', 'reviewer_id', 'due_date', 'comments_count']
+
+
+class TaskUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for Task PATCH/PUT responses.
+    
+    Returns fields needed for update operations:
+    - id, title, description, status, priority, assignee, reviewer, due_date
+    
+    Excludes board, comments, and comments_count. Uses UserNestedSerializer for assignee/reviewer.
+    """
+    
+    assignee = UserNestedSerializer(read_only=True, source='assigned')
+    reviewer = UserNestedSerializer(read_only=True)
+    assignee_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        write_only=True,
+        source='assigned',
+        allow_null=True)
+    reviewer_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        write_only=True,
+        source='reviewer',
+        allow_null=True)
+    description = serializers.CharField(source='details', required=False, allow_blank=True)
+    
+    class Meta:
+        model = Task
+        fields = ['id', 'title', 'description', 'status', 'priority', 'assignee', 'assignee_id', 'reviewer', 'reviewer_id', 'due_date']
+
+
 class TaskSerializer(serializers.ModelSerializer):
     """Serializer for Task model with nested relationships.
 
@@ -176,28 +279,21 @@ class TaskSerializer(serializers.ModelSerializer):
 
 
 class BoardSerializer(serializers.ModelSerializer):
-    """Serializer for Board model with custom field mapping.
+    """Minimal serializer for Board list, POST and PATCH operations.
 
-    Handles frontend-backend field name compatibility by mapping:
-    - 'members' (frontend read) <-> 'users' (model field)
-    - 'members_write' (frontend write) <-> 'users' (model field)
-
-    Includes nested serialization for board members and tasks.
+    Returns only the required fields per API spec:
+    - id, title, owner_id, member_count, ticket_count, tasks_to_do_count, tasks_high_prio_count
+    
+    Used for: GET /api/boards/, POST /api/boards/, PATCH /api/boards/{id}/
     """
 
-    users = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=User.objects.all(), required=False)
-    members = UserSerializer(many=True, read_only=True, source='users')
-    members_data = UserSerializer(many=True, read_only=True, source='users')
     members_write = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=User.objects.all(),
         required=False,
         write_only=True,
         source='users')
-    tasks = TaskSerializer(many=True, read_only=True)
     owner_id = serializers.ReadOnlyField(source='owner.id')
-    owner_data = UserSerializer(read_only=True, source='owner')
     member_count = serializers.SerializerMethodField()
     ticket_count = serializers.SerializerMethodField()
     tasks_to_do_count = serializers.SerializerMethodField()
@@ -283,7 +379,70 @@ class BoardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Board
-        fields = ['id', 'title', 'description', 'owner_id', 'owner_data', 'users', 'members', 'members_data', 'members_write', 'tasks', 'member_count', 'ticket_count', 'tasks_to_do_count', 'tasks_high_prio_count']
+        fields = ['id', 'title', 'owner_id', 'members_write', 'member_count', 'ticket_count', 'tasks_to_do_count', 'tasks_high_prio_count']
+
+
+class BoardDetailSerializer(serializers.ModelSerializer):
+    """Detailed serializer for single Board GET requests.
+
+    Returns full board data including nested members and tasks arrays
+    required by frontend board detail page.
+    
+    Used for: GET /api/boards/{id}/
+    """
+
+    members = UserNestedSerializer(many=True, read_only=True, source='users')
+    tasks = TaskNestedSerializer(many=True, read_only=True)
+    owner_id = serializers.ReadOnlyField(source='owner.id')
+
+    class Meta:
+        model = Board
+        fields = ['id', 'title', 'owner_id', 'members', 'tasks']
+
+
+class BoardPatchSerializer(serializers.ModelSerializer):
+    """Serializer for Board PATCH/PUT responses.
+
+    Returns updated board data with owner and members details.
+    
+    Used for: PATCH /api/boards/{id}/, PUT /api/boards/{id}/
+    """
+
+    members_write = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=User.objects.all(),
+        required=False,
+        write_only=True,
+        source='users')
+    owner_data = UserNestedSerializer(read_only=True, source='owner')
+    members_data = UserNestedSerializer(many=True, read_only=True, source='users')
+
+    def validate_title(self, value):
+        """Ensure board title is non-empty after trimming whitespace."""
+        cleaned = (value or "").strip()
+        if not cleaned:
+            raise serializers.ValidationError('Title cannot be empty.')
+        return cleaned
+
+    def to_internal_value(self, data):
+        """Convert frontend field names to model field names."""
+        if 'members' in data and 'members_write' not in data:
+            data['members_write'] = data.pop('members')
+        return super().to_internal_value(data)
+
+    def update(self, instance, validated_data):
+        """Update board fields and reset members to provided list."""
+        users_data = validated_data.pop('users', None)
+        board = super().update(instance, validated_data)
+        if users_data is not None:
+            board.users.set(users_data)
+            if board.owner:
+                board.users.add(board.owner)
+        return board
+
+    class Meta:
+        model = Board
+        fields = ['id', 'title', 'owner_data', 'members_data', 'members_write']
 
 
 class DashboardSerializer(serializers.ModelSerializer):

@@ -5,7 +5,6 @@ to boards, tasks, and comments based on ownership and admin status.
 """
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
-from rest_framework.exceptions import NotAuthenticated
 
 
 class IsStaffOrReadOnlyPermission(BasePermission):
@@ -81,10 +80,7 @@ class IsOwnerOrAdmin(BasePermission):
         Returns:
             bool: True if user is authenticated.
         """
-        if not (request.user and request.user.is_authenticated):
-            # Mirror DRF's IsAuthenticated behavior to return 401 instead of 403
-            raise NotAuthenticated()
-        return True
+        return bool(request.user and request.user.is_authenticated)
 
     def _check_board_ownership(self, request, obj):
         """Check if user is a member of the board.
@@ -171,12 +167,12 @@ class IsOwnerOrAdmin(BasePermission):
             return is_owner or is_admin
         elif request.method == 'DELETE':
             if is_board:
-                # Only the board owner may delete
-                return is_board_owner
+                # Only the board owner or admin may delete
+                return is_board_owner or is_admin
             if is_task:
                 board_owner = request.user == getattr(obj.board, 'owner', None)
                 is_creator = request.user == getattr(obj, 'created_by', None)
-                return board_owner or is_creator
-            return is_owner
+                return board_owner or is_creator or is_admin
+            return is_owner or is_admin
         else:
             return is_owner or is_admin
