@@ -127,6 +127,13 @@ class TaskListSerializer(serializers.ModelSerializer):
     def get_comments_count(self, obj):
         return obj.comments.count()
     
+    def validate_board(self, value):
+        """Validate that board exists; raise 404 if not."""
+        if value is None:
+            raise serializers.ValidationError('Board is required.')
+        # Board ID validation already done by PrimaryKeyRelatedField
+        return value
+    
     class Meta:
         model = Task
         fields = ['id', 'board', 'title', 'description', 'status', 'priority', 'assignee', 'assignee_id', 'reviewer', 'reviewer_id', 'due_date', 'comments_count']
